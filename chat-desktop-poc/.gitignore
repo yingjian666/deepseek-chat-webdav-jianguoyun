@@ -1,0 +1,31 @@
+# 依赖
+node_modules/
+.pnpm-store/
+
+# 构建产物
+dist/
+build/*.zip
+build/*.exe
+src-tauri/target/
+src-tauri/gen/
+
+# 内部文档（不随仓库发布）
+TECHNICAL.md
+PACKAGING.md
+
+# 日志与临时文件
+*.log
+*.tmp
+*.bak
+_*
+
+# 编辑器 / 系统
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# 打包时保留图标资源
+!build/icon.ico
+!build/icon-*.png
+!build/icon-source.png
