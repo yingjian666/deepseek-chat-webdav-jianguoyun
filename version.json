@@ -1,0 +1,9 @@
+{
+  "version": "1.0.0",
+  "notes": "首个正式版本：基于 chat-demo v0.1.4，支持坚果云 WebDAV 手动同步，凭据加密存储。",
+  "downloadUrl": "https://github.com/yingjian666/deepseek-chat-webdav-jianguoyun/releases/download/v1.0.0/ChatDesktop-1.0.0-Setup.exe",
+  "downloads": {
+    "github": "https://github.com/yingjian666/deepseek-chat-webdav-jianguoyun/releases/download/v1.0.0/ChatDesktop-1.0.0-Setup.exe",
+    "gitee": "https://gitee.com/yingjian666/deepseek-chat-webdav-jianguoyun/releases/download/v1.0.0/ChatDesktop-1.0.0-Setup.exe"
+  }
+}
