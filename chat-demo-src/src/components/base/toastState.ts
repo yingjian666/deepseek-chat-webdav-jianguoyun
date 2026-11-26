@@ -11,9 +11,10 @@ const DURATION = 3000
 const LINK_DURATION = 5000
 let timer = 0
 
-export const showToast = (message: LinkedMessage | string) => {
+export const showToast = (message: LinkedMessage | string, duration?: number) => {
   window.clearTimeout(timer)
   useToast.setState((state) => ({ id: state.id + 1, message }))
-  const duration = typeof message !== 'string' && message.link ? LINK_DURATION : DURATION
-  timer = window.setTimeout(() => useToast.setState({ message: null }), duration)
+  const fallback =
+    typeof message !== 'string' && message.link ? LINK_DURATION : DURATION
+  timer = window.setTimeout(() => useToast.setState({ message: null }), duration ?? fallback)
 }

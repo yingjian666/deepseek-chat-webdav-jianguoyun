@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand'
+import { create } from 'zustand'
 import type { TtsVoice } from './api/speech.js'
 import { normalizeLocation, type UserLocation } from './location.js'
 import { createId } from '../utils/id.js'
@@ -14,6 +14,21 @@ export type SelectedModel = 'deepseek-flash' | 'deepseek-v4-pro'
 
 /** 一条偏好或记忆：带 id，供会话按 id 关联。 */
 export type PromptItem = { id: string; content: string }
+
+/**
+ * 偏好与记忆的数量/字数上限。
+ * 系统提示过长会明显拖慢首字并浪费上下文，所以超出的部分既不创建也不注入。
+ */
+export const MAX_PREFERENCES = 50
+export const MAX_PREFERENCE_CHARS = 100
+export const MAX_MEMORIES = 30
+export const MAX_MEMORY_CHARS = 2000
+
+/** 按类型取数量上限 / 单条字数上限。 */
+export const promptLimitsOf = (kind: 'preferences' | 'memories') =>
+  kind === 'preferences'
+    ? { maxItems: MAX_PREFERENCES, maxChars: MAX_PREFERENCE_CHARS }
+    : { maxItems: MAX_MEMORIES, maxChars: MAX_MEMORY_CHARS }
 
 /** 会话关联的偏好/记忆 id（undefined = 不注入任何内容）。 */
 export type LinkedPromptIds = { preferences?: string[]; memories?: string[] }
@@ -310,16 +325,25 @@ export const setDriftSuppression = (driftSuppression: boolean) => {
 /** 把个人偏好、记忆与实验性提示拼成附加系统提示；没有内容时返回空串。 */
 export const extraContextPrompt = (linked?: LinkedPromptIds): string => {
   const { preferences, memories, driftSuppression } = useSettings.getState()
-  // 只注入会话关联的条目；没关联（undefined）就不注入任何偏好/记忆
-  const pick = (items: PromptItem[], ids?: string[]): string[] =>
+  /**
+   * 只注入会话关联的条目；没关联（undefined）就不注入任何偏好/记忆。
+   * 超出上限的部分（条数、单条字数）一律跳过，和界面上的限制保持一致。
+   */
+  const pick = (
+    items: PromptItem[],
+    ids: string[] | undefined,
+    maxItems: number,
+    maxChars: number
+  ): string[] =>
     ids === undefined
       ? []
       : items
           .filter((item) => ids.includes(item.id))
+          .slice(0, maxItems)
           .map((item) => item.content.trim())
-          .filter(Boolean)
-  const prefs = pick(preferences, linked?.preferences)
-  const facts = pick(memories, linked?.memories)
+          .filter((content) => content.length > 0 && content.length <= maxChars)
+  const prefs = pick(preferences, linked?.preferences, MAX_PREFERENCES, MAX_PREFERENCE_CHARS)
+  const facts = pick(memories, linked?.memories, MAX_MEMORIES, MAX_MEMORY_CHARS)
 
   const lines: string[] = []
   if (prefs.length > 0) {

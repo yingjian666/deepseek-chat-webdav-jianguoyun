@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslate } from '../../i18n/index.js'
 import { backfillUsage, useChatStore } from '../../services/chat/store.js'
+import { isPeakNow } from '../../services/peakHours.js'
 import { setShowUsagePanel, useSettings } from '../../services/settings.js'
 import { Select } from '../base/Select.js'
 
@@ -35,7 +36,7 @@ const USAGE_HISTORY_KEY = 'chat-desktop:usage-history'
 const USAGE_SESSIONS_KEY = 'chat-desktop:usage-sessions'
 const USAGE_SPEECH_KEY = 'chat-desktop:usage-speech'
 
-/** 各模型估算价格（�?/ 百万 token），�?DeepSeek 官方定价；高峰为工作�?9�?2�?4�?8 点�?*/
+/** 各模型估算价格（元/百万 token），按 DeepSeek 官方定价；高峰为工作日 9-12、14-18 点。 */
 const MODEL_PRICE: Record<string, PriceTable> = {
   'deepseek-flash': {
     inputMiss: { peak: 2, off: 1 },
@@ -49,11 +50,11 @@ const MODEL_PRICE: Record<string, PriceTable> = {
   },
 }
 
-/** 语音相关：ASR �?秒（0.39 �?小时，限时折扣价）；TTS �?字符�?.5 �?万字符，限时折扣价）�?*/
+/** 语音相关：ASR 按秒（0.39 元/小时，限时折扣价）；TTS 按字符（1.5 元/万字符，限时折扣价）。 */
 const ASR_PRICE_PER_SECOND = 0.39 / 3600
 const TTS_PRICE_PER_CHAR = 1.5 / 10000
 
-/** 模型显示名（与官方文档一致）；未收录的模型原样显示�?*/
+/** 模型显示名（与官方文档一致）；未收录的模型原样显示。 */
 const MODEL_LABEL: Record<string, string> = {
   'deepseek-flash': 'DeepSeek-V4.1-Flash',
   'deepseek-v4-pro': 'DeepSeek-V4-Pro',
@@ -62,13 +63,6 @@ const MODEL_LABEL: Record<string, string> = {
 const modelLabel = (model: string) => MODEL_LABEL[model] ?? model
 
 const DEFAULT_PRICE = MODEL_PRICE['deepseek-flash']
-
-const isPeakNow = (now: Date) => {
-  const day = now.getDay()
-  if (day === 0 || day === 6) return false
-  const hour = now.getHours()
-  return (hour >= 9 && hour < 12) || (hour >= 14 && hour < 18)
-}
 
 const formatTokens = (value: number) =>
   value >= 1_000_000
@@ -96,7 +90,7 @@ const emptyTotals = (): UsageTotals => ({
   calls: 0,
 })
 
-/** 兼容旧记录：早期版本没有 cacheWrite / models 字段，统一�?0�?*/
+/** 兼容旧记录：早期版本没有 cacheWrite / models 字段，统一按 0 计。 */
 const normalizeTotals = (value: Partial<UsageTotals> | null | undefined): UsageTotals => ({
   input: value?.input ?? 0,
   cacheHit: value?.cacheHit ?? 0,
@@ -151,7 +145,7 @@ const rowStyle = {
 
 const dim = 'var(--dsw-alias-label-tertiary, #8a8f99)'
 
-/** 设置 �?余额与用量：按日期查看今�?历史用量，消费按模型估算；只反映本设备�?*/
+/** 设置 → 余额与用量：按日期查看今日历史用量，消费按模型估算；只反映本设备。 */
 export const UsageSection = () => {
   const t = useTranslate()
   const sessions = useChatStore((state) => state.sessions)
@@ -211,7 +205,7 @@ export const UsageSection = () => {
   useEffect(() => {
     // 先回填历史消息里的用量（只跑一次），再加载页面数据
     void backfillUsage().then(load)
-    // 轮询间隔固定 60 秒，不做设置�?
+    // 轮询间隔固定 60 秒，不做设置。
     const timer = window.setInterval(load, 60_000)
     return () => window.clearInterval(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -219,7 +213,7 @@ export const UsageSection = () => {
 
   const todayKey = new Date().toISOString().slice(0, 10)
 
-  /** 某天的「模�?�?用量」；今日优先�?USAGE_KEY（兼容旧格式）�?*/
+  /** 某天的「模型 → 用量」；今日优先从 USAGE_KEY（兼容旧格式）读。 */
   const dayModels = useMemo(() => {
     const date = selectedDate === 'today' ? todayKey : selectedDate
     if (date === todayKey && todayRaw && todayRaw.date === todayKey) {
@@ -236,7 +230,7 @@ export const UsageSection = () => {
     return history[date] ?? {}
   }, [selectedDate, todayKey, todayRaw, history])
 
-  /** 可查看的日期：今�?+ 30 天内有记录的日期（新到旧）�?*/
+  /** 可查看的日期：今日 + 30 天内有记录的日期（新到旧）。 */
   const dateOptions = useMemo(() => {
     const options = [{ value: 'today', label: t('usageTodayOption') }]
     const keys = Object.keys(history).sort((a, b) => (a < b ? 1 : -1))
@@ -271,7 +265,7 @@ export const UsageSection = () => {
   const asrCost = daySpeech.asrSeconds * ASR_PRICE_PER_SECOND
   const ttsCost = daySpeech.ttsChars * TTS_PRICE_PER_CHAR
   const cost = modelCosts.reduce((sum, item) => sum + item.cost, 0) + asrCost + ttsCost
-  // 缓存命中�?= 缓存�?/ (未命中输�?+ 缓存�?
+  // 缓存命中率 = 缓存命中 / (未命中输入 + 缓存命中)
   const inputTotal = totals.input + totals.cacheHit
   const cacheHitRate = inputTotal > 0 ? Math.round((totals.cacheHit / inputTotal) * 100) : null
 
@@ -286,7 +280,7 @@ export const UsageSection = () => {
     .sort((a, b) => b.tokens - a.tokens)
     .slice(0, 3)
 
-  // �?30 天按模型聚合
+  // 近 30 天按模型聚合
   const modelTotals = new Map<string, UsageTotals>()
   for (const day of Object.values(history)) {
     for (const [model, item] of Object.entries(day)) {
@@ -446,7 +440,7 @@ export const UsageSection = () => {
             {asrCost > 0 ? (
               <div style={{ ...rowStyle, fontSize: 12, color: dim }}>
                 <span>
-                  {t('usageVoiceInput')}（{Math.round(daySpeech.asrSeconds)} {t('usageSeconds')}�?
+                  {t('usageVoiceInput')}（{Math.round(daySpeech.asrSeconds)} {t('usageSeconds')}）
                 </span>
                 <span>{formatCost(asrCost)}</span>
               </div>
@@ -454,7 +448,7 @@ export const UsageSection = () => {
             {ttsCost > 0 ? (
               <div style={{ ...rowStyle, fontSize: 12, color: dim }}>
                 <span>
-                  {t('usageReadAloud')}（{daySpeech.ttsChars} {t('usageChars')}�?
+                  {t('usageReadAloud')}（{daySpeech.ttsChars} {t('usageChars')}）
                 </span>
                 <span>{formatCost(ttsCost)}</span>
               </div>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslate } from '../../i18n/index.js'
 import { useChatStore, setSessionLinkedPrompt } from '../../services/chat/store.js'
 import {
+  promptLimitsOf,
   setMemories,
   setPreferences,
   useSettings,
@@ -9,6 +10,7 @@ import {
 } from '../../services/settings.js'
 import { createId } from '../../utils/id.js'
 import { Modal } from '../base/Modal.js'
+import { showToast } from '../base/toastState.js'
 import { useMemoryLink } from './memoryLinkState.js'
 
 const itemBox = {
@@ -73,9 +75,21 @@ export const MemoryLinkDialog = () => {
   const toggle = (id: string) => {
     setLinked(linked.includes(id) ? linked.filter((item) => item !== id) : [...linked, id])
   }
+  const limits = promptLimitsOf(tab)
+  const kindLabel = tab === 'preferences' ? t('settingsPersonalPrompt') : t('settingsMemory')
+  /** 撞上限时提示 5 秒，避免一闪而过。 */
+  const warnLimit = (message: Parameters<typeof showToast>[0]) => showToast(message, 5000)
   const add = () => {
     const value = draft.trim()
     if (!value) {
+      return
+    }
+    if (items.length >= limits.maxItems) {
+      warnLimit({ key: 'promptLimitCount', params: { kind: kindLabel, max: limits.maxItems } })
+      return
+    }
+    if (value.length > limits.maxChars) {
+      warnLimit({ key: 'promptLimitChars', params: { kind: kindLabel, max: limits.maxChars } })
       return
     }
     const next = [...items, { id: createId(), content: value }]
@@ -97,6 +111,10 @@ export const MemoryLinkDialog = () => {
     }
     const value = editingValue.trim()
     if (value) {
+      if (value.length > limits.maxChars) {
+        warnLimit({ key: 'promptLimitChars', params: { kind: kindLabel, max: limits.maxChars } })
+        return
+      }
       setItems(items.map((item) => (item.id === editingId ? { ...item, content: value } : item)))
     }
     setEditingId(null)
@@ -168,6 +186,10 @@ export const MemoryLinkDialog = () => {
           }}
         >
           {t('memoryLinkCacheHint')}
+        </div>
+
+        <div style={{ fontSize: 11, color: dim }}>
+          {t('promptLimitHint', { max: limits.maxItems, chars: limits.maxChars })}
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>

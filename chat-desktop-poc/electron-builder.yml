@@ -1,0 +1,35 @@
+appId: com.chatdesktop.app
+productName: ChatDesktop
+copyright: Copyright © 2026 yingjian666
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - main.cjs
+  - preload.cjs
+  - settings-preload.cjs
+  - settings.html
+  - dist/**
+  - build/**
+  - package.json
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: build/icon.ico
+  artifactName: ChatDesktop-${version}-Setup.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: ChatDesktop
+  uninstallDisplayName: ChatDesktop ${version}
+  deleteAppDataOnUninstall: false

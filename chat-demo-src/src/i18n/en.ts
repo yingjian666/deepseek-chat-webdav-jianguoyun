@@ -173,6 +173,9 @@ export const en = {
   modelFlashDesc: 'Fast and versatile: deep thinking, image input, web search',
   modelProDesc: 'Stronger reasoning: complex text-only tasks, no images; noticeably higher token usage',
   settingsTokens: 'tokens',
+  promptLimitCount: 'Limit for {kind}: {max} items',
+  promptLimitChars: 'Each item is limited to {max} characters',
+  promptLimitHint: 'limit {max} items, {chars} chars each',
   settingsSyncAccount: 'Jianguoyun account',
   settingsSyncAccountHint:
     'Optional, used for conversation sync; leave it blank if you do not need syncing. Credentials are encrypted by the OS and stay on this machine.',

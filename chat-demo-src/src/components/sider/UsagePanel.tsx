@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslate } from '../../i18n/index.js'
+import { isPeakNow } from '../../services/peakHours.js'
 
 type Usage = {
   date: string
@@ -28,13 +29,6 @@ const PRICE = {
   inputMiss: { peak: 2, off: 1 },
   inputHit: { peak: 0.04, off: 0.02 },
   output: { peak: 8, off: 4 },
-}
-
-const isPeakNow = (now: Date) => {
-  const day = now.getDay()
-  if (day === 0 || day === 6) return false
-  const hour = now.getHours()
-  return (hour >= 9 && hour < 12) || (hour >= 14 && hour < 18)
 }
 
 const formatTokens = (value: number) =>

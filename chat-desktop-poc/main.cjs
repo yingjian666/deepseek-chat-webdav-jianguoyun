@@ -12,7 +12,31 @@ const https = require('node:https')
 const DATA_DIR = path.join(app.getPath('appData'), 'chat-desktop-poc')
 app.setPath('userData', DATA_DIR)
 
-const DIST_INDEX = path.join(__dirname, '..', 'chat-demo-src', 'dist', 'index.html')
+/**
+ * 崩溃日志。
+ * 打包版没有控制台，启动失败时用户只会看到白屏、完全无从排查。
+ * 只在出错时写入；超过 256 KB 就清空重写，避免长期运行把文件撑大。
+ */
+const ERROR_LOG = path.join(DATA_DIR, 'error.log')
+const MAX_LOG_BYTES = 256 * 1024
+const logError = (message) => {
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true })
+    if (fs.existsSync(ERROR_LOG) && fs.statSync(ERROR_LOG).size > MAX_LOG_BYTES) {
+      fs.writeFileSync(ERROR_LOG, '')
+    }
+    fs.appendFileSync(ERROR_LOG, `${new Date().toISOString()} ${message}\n`)
+  } catch {
+    /* 日志失败不影响运行 */
+  }
+}
+process.on('uncaughtException', (e) => logError(`uncaught: ${e && e.stack ? e.stack : e}`))
+process.on('unhandledRejection', (e) => logError(`rejection: ${e && e.stack ? e.stack : e}`))
+
+// 开发时用同级的 chat-demo-src/dist；打包后前端被复制进 app 目录的 dist/
+const DIST_INDEX = app.isPackaged
+  ? path.join(__dirname, 'dist', 'index.html')
+  : path.join(__dirname, '..', 'chat-demo-src', 'dist', 'index.html')
 const SETTINGS_HTML = path.join(__dirname, 'settings.html')
 const DAV_BASE = 'https://dav.jianguoyun.com/dav/'
 // 专属目录：/chat/chat/ ——软件只读写这里，不碰网盘其他文件
@@ -918,22 +942,42 @@ if (!gotSingleInstanceLock) {
 }
 
 app.whenReady().then(async () => {
-  await migrateLegacyConfig()
-  win = new BrowserWindow({
-    width: 1180,
-    height: 820,
-    title: 'ChatDesktop',
-    // 任务栏 / 标题栏图标：build/icon.ico 由生成脚本产出（16~256 六档）
-    icon: path.join(__dirname, 'build', 'icon.ico'),
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false,
-      preload: path.join(__dirname, 'preload.cjs'),
-    },
-  })
-  buildMenu()
-  win.loadFile(DIST_INDEX)
-  win.webContents.setZoomFactor(normalizeZoom(readPrefs().zoomFactor))
+  try {
+    await migrateLegacyConfig()
+  } catch (e) {
+    logError(`migrate error: ${e && e.stack ? e.stack : e}`)
+  }
+  try {
+    win = new BrowserWindow({
+      width: 1180,
+      height: 820,
+      title: 'ChatDesktop',
+      // 任务栏 / 标题栏图标：build/icon.ico 由生成脚本产出（16~256 六档）
+      icon: path.join(__dirname, 'build', 'icon.ico'),
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+        preload: path.join(__dirname, 'preload.cjs'),
+      },
+    })
+    buildMenu()
+    // 前端资源缺失时 loadFile 会 reject。必须接住并提示，
+    // 否则用户只会看到一个空白窗口，完全不知道发生了什么。
+    await win.loadFile(DIST_INDEX).catch((e) => {
+      logError(`loadFile failed: ${e && e.stack ? e.stack : e}`)
+      dialog.showErrorBox(
+        'ChatDesktop 启动失败',
+        `无法加载界面文件：\n${DIST_INDEX}\n\n请重新安装；若仍失败，把下面的日志发给开发者：\n${ERROR_LOG}`
+      )
+    })
+    win.webContents.setZoomFactor(normalizeZoom(readPrefs().zoomFactor))
+  } catch (e) {
+    logError(`window error: ${e && e.stack ? e.stack : e}`)
+    dialog.showErrorBox(
+      'ChatDesktop 启动失败',
+      `${e && e.message ? e.message : e}\n\n日志：${ERROR_LOG}`
+    )
+  }
 })
 
 app.on('window-all-closed', () => app.quit())

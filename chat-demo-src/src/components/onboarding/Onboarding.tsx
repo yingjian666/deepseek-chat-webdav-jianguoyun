@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
-import { openSettings } from '../settings/settingsDialogState.js'
+import { closeSettings, openSettings, ONBOARDED_KEY } from '../settings/settingsDialogState.js'
 
 /** 引导步骤：目标可以是页面元素（data-tour）或一张截图。 */
 type TourStep = {
@@ -148,7 +148,7 @@ const steps: TourStep[] = [
   },
 ]
 
-const KEY = 'chat-desktop:onboarded'
+const KEY = ONBOARDED_KEY
 const BUBBLE_WIDTH = 420
 
 /**
@@ -232,6 +232,8 @@ export const Onboarding = () => {
   // 设置里「重看新手引导」触发
   useEffect(() => {
     const handler = () => {
+      // 重看引导时先关掉设置，否则设置窗口会盖在引导下面
+      closeSettings()
       setActive(true)
       setStep(0)
     }
@@ -434,7 +436,7 @@ export const Onboarding = () => {
           </button>
           <button
             type="button"
-            onClick={() => setActive(false)}
+            onClick={finish}
             style={{
               padding: '6px 14px',
               borderRadius: 8,

@@ -18,6 +18,8 @@ PACKAGING.md
 *.tmp
 *.bak
 _*
+# 打包脚本：路径已改为 __dirname，可以随仓库发布
+!_build.cjs
 
 # 编辑器 / 系统
 .DS_Store

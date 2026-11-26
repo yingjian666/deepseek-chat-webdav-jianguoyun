@@ -167,6 +167,9 @@ export const zh = {
   modelFlashDesc: '速度快、全能：支持深度思考、图片输入、联网搜索',
   modelProDesc: '更强推理：适合复杂纯文本任务，不支持图片；token 消耗明显更高',
   settingsTokens: 'token',
+  promptLimitCount: '{kind}最多 {max} 条，已达上限',
+  promptLimitChars: '单条最多 {max} 字，请精简后再添加',
+  promptLimitHint: '上限 {max} 条，每条 {chars} 字',
   settingsSyncAccount: '坚果云账号',
   settingsSyncAccountHint:
     '用于对话同步，可以不填，不影响聊天；凭据使用系统加密保存，只存在本机。',

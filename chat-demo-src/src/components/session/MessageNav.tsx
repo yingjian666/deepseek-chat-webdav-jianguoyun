@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { getVisibleMessages } from '../../services/chat/branches.js'
-import type { Session } from '../../services/chat/types.js'
+import type { Session, UserMessage } from '../../services/chat/types.js'
 
 /** 收起时只显示最近这么多轮，避免长会话把横线挤成一条缝。 */
 const RECENT_LIMIT = 15
@@ -19,10 +19,10 @@ export const MessageNav = ({ session }: { session: Session }) => {
   const items = useMemo(
     () =>
       getVisibleMessages(session).filter(
-        (message) =>
+        (message): message is UserMessage =>
           message.role === 'user' &&
           typeof message.content === 'string' &&
-          message.content.trim()
+          message.content.trim().length > 0
       ),
     [session]
   )

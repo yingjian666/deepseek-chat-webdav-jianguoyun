@@ -1,4 +1,5 @@
 import { translate } from '../../i18n/index.js'
+import type { TranslationKey } from '../../i18n/index.js'
 import { monthKey } from '../../utils/format.js'
 import type { SessionSummary } from './types.js'
 
@@ -49,7 +50,7 @@ export const flattenLineage = (sessions: SessionSummary[]): SessionRow[] => {
   return rows
 }
 
-const timelineKey = (time: number): { key: string; labelKey: string | null } => {
+const timelineKey = (time: number): { key: string; labelKey: TranslationKey | null } => {
   const diff = Math.floor((Date.now() - startOfDay(time)) / DAY)
   if (diff <= 0) {
     return { key: 'sessionHistoryTimelineLabelToday', labelKey: 'sessionHistoryTimelineLabelToday' }

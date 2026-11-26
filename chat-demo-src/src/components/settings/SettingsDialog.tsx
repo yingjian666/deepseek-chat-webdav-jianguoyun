@@ -40,6 +40,7 @@ import {
   setThemePreference,
   setThinkingLanguage,
   setTtsVoice,
+  promptLimitsOf,
   useSettings,
   type PromptItem,
   type ThemePreference,
@@ -654,12 +655,6 @@ const RemoteSizeWarningSetting = () => {
 }
 
 
-const StatsStyle = {
-  marginTop: 4,
-  fontSize: 12,
-  color: 'var(--dsw-alias-label-tertiary, #8a8f99)',
-}
-
 /** 通用：一个「标题 + 开关 + 列表 + 新增输入」的配置块。 */
 type PromptListProps = {
   title: string
@@ -667,6 +662,8 @@ type PromptListProps = {
   example?: string
   placeholder: string
   emptyLabel: string
+  /** 决定数量上限与单条字数上限 */
+  kind: 'preferences' | 'memories'
   items: PromptItem[]
   onChange: (items: PromptItem[]) => void
   /** 导出到坚果云（可选） */
@@ -681,6 +678,7 @@ const PromptListSetting = ({
   example,
   placeholder,
   emptyLabel,
+  kind,
   items,
   onChange,
   onExport,
@@ -693,9 +691,23 @@ const PromptListSetting = ({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingValue, setEditingValue] = useState('')
 
+  const limits = promptLimitsOf(kind)
+  const kindLabel = kind === 'preferences' ? t('settingsPersonalPrompt') : t('settingsMemory')
+
+  /** 撞上限时用 5 秒提示，比普通 toast 长，避免用户没看清就消失。 */
+  const warnLimit = (message: Parameters<typeof showToast>[0]) => showToast(message, 5000)
+
   const add = () => {
     const value = draft.trim()
     if (!value) return
+    if (items.length >= limits.maxItems) {
+      warnLimit({ key: 'promptLimitCount', params: { kind: kindLabel, max: limits.maxItems } })
+      return
+    }
+    if (value.length > limits.maxChars) {
+      warnLimit({ key: 'promptLimitChars', params: { kind: kindLabel, max: limits.maxChars } })
+      return
+    }
     onChange([...items, { id: createId(), content: value }])
     setDraft('')
   }
@@ -710,13 +722,16 @@ const PromptListSetting = ({
     if (editingId === null) return
     const value = editingValue.trim()
     if (value) {
+      if (value.length > limits.maxChars) {
+        warnLimit({ key: 'promptLimitChars', params: { kind: kindLabel, max: limits.maxChars } })
+        return
+      }
       onChange(items.map((item) => (item.id === editingId ? { ...item, content: value } : item)))
     }
     setEditingId(null)
   }
 
   const filtered = items.filter((item) => !keyword.trim() || item.content.includes(keyword.trim()))
-  const total = items.reduce((sum, item) => sum + item.content.trim().length, 0)
 
   const inputStyle = {
     flex: 1,
@@ -743,6 +758,16 @@ const PromptListSetting = ({
         <span>
           {title}
           {items.length > 0 ? `（${items.length} ${t('settingsRows')}）` : ''}
+          <span
+            style={{
+              marginLeft: 8,
+              fontSize: 11,
+              fontWeight: 400,
+              color: 'var(--dsw-alias-label-tertiary, #8a8f99)',
+            }}
+          >
+            {t('promptLimitHint', { max: limits.maxItems, chars: limits.maxChars })}
+          </span>
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         {onImport ? (
@@ -954,6 +979,32 @@ const PromptListSetting = ({
                   >
                     {item.content}
                   </span>
+                  {(() => {
+                    const charCount = item.content.trim().length
+                    const overLimit = charCount > limits.maxChars
+                    return (
+                      <span
+                        style={{
+                          flexShrink: 0,
+                          alignSelf: 'flex-start',
+                          paddingTop: 2,
+                          fontSize: 11,
+                          whiteSpace: 'nowrap',
+                          fontVariantNumeric: 'tabular-nums',
+                          color: overLimit
+                            ? '#d94040'
+                            : 'var(--dsw-alias-label-tertiary, #8a8f99)',
+                        }}
+                        title={
+                          overLimit
+                            ? t('promptLimitChars', { kind: kindLabel, max: limits.maxChars })
+                            : undefined
+                        }
+                      >
+                        {charCount} {t('settingsChars')} · ~{charCount} {t('settingsTokens')}
+                      </span>
+                    )
+                  })()}
                   <button
                     type="button"
                     aria-label={t('edit')}
@@ -1027,10 +1078,6 @@ const PromptListSetting = ({
         >
           {t('settingsMemoryAdd')}
         </button>
-      </div>
-      <div style={StatsStyle}>
-        {items.length} {t('settingsRows')} · {total} {t('settingsChars')} · ~{total}{' '}
-        {t('settingsTokens')}
       </div>
     </div>
   )
@@ -1209,6 +1256,7 @@ const PersonalMemorySection = () => {
           example={t('settingsPersonalPromptExample')}
           placeholder={t('settingsPersonalPromptHint')}
           emptyLabel={t('settingsPreferencesEmpty')}
+          kind="preferences"
           items={preferences}
           onChange={setPreferences}
           onExport={() => exportPrompts('preferences')}
@@ -1221,6 +1269,7 @@ const PersonalMemorySection = () => {
           example={t('settingsMemoryExample')}
           placeholder={t('settingsMemoryHint')}
           emptyLabel={t('settingsMemoryEmpty')}
+          kind="memories"
           items={memories}
           onChange={setMemories}
           onExport={() => exportPrompts('memories')}
