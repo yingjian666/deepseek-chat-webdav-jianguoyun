@@ -1888,7 +1888,7 @@ const useHistoryImport = () => {
   }
 }
 
-/** 导入 = 覆盖：用选中文件替换本地全部会话与附件。 */
+/** 导入 = 合并：用户勾选的对话按 id 合并进来，不删除本地已有的对话。 */
 const ImportHistory = ({
   historyImport,
   disabled,
